@@ -44,10 +44,10 @@ const addComment = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     const { content } = req.body;
 
-    if ([videoId, content].some((field) =>
+    if ([videoId, content].every((field) =>
         field?.trim() === ""
     )) {
-        throw new ApiError(400, "video or content field can't be empty");
+        throw new ApiError(400, "videoId and content field can't be empty");
     }
 
     try {
@@ -86,6 +86,10 @@ const updateComment = asyncHandler(async (req, res) => {
 
     if (!commentId) {
         throw new ApiError(400, "Comment ID is required");
+    }
+
+    if (!content || content === "") {
+        throw new ApiError(400, "Content field can't be empty");
     }
 
     try {
