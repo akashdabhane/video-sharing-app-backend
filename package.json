@@ -1,7 +1,7 @@
 {
-  "name": "chai-backend",
+  "name": "video-sharing-app-backend",
   "version": "1.0.0",
-  "description": "a backend at chai or code channel - youtube",
+  "description": "",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -9,8 +9,7 @@
   },
   "keywords": [
     "javascript",
-    "backend",
-    "chai"
+    "backend"
   ],
   "author": "Akash Dabhane",
   "license": "ISC",
