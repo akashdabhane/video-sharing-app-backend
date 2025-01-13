@@ -37,7 +37,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const { fullName, username, email, password } = req.body;
     console.log(username, fullName, email, password)
 
-    if ([fullName, username, email, password].some((field) =>
+    if ([username, email, password].some((field) =>
         field?.trim() === ""
     )) {
         throw new ApiError(400, "All fields are required");
@@ -53,30 +53,30 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
 
-    const avatorLocalPath = req.files?.avatar[0]?.path;
-    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const avatorLocalPath = req.files?.avatar[0]?.path;
+    // // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
-    let coverImageLocalPath;
-    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-        coverImageLocalPath = req.files.coverImage[0].path;
-    }
+    // let coverImageLocalPath;
+    // if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    //     coverImageLocalPath = req.files.coverImage[0].path;
+    // }
 
 
-    if (!avatorLocalPath) {
-        throw new ApiError(400, "Avatar file is required")
-    }
+    // if (!avatorLocalPath) {
+    //     throw new ApiError(400, "Avatar file is required")
+    // }
 
-    const avatar = await uploadOnCloudinary(avatorLocalPath)
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    // const avatar = await uploadOnCloudinary(avatorLocalPath)
+    // const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-    if (!avatar) {
-        throw new ApiError(400, "Avatar file is required")
-    }
+    // if (!avatar) {
+    //     throw new ApiError(400, "Avatar file is required")
+    // }
 
     const user = await User.create({
-        fullName,
-        avatar: avatar.url,
-        coverImage: coverImage?.url || "",
+        // fullName,
+        // avatar: avatar.url,
+        // coverImage: coverImage?.url || "",
         email,
         password,
         username: username.toLowerCase(),
@@ -312,16 +312,12 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 })
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-    const { username } = req.params;
-
-    if (!username?.trim()) {
-        throw new ApiError(400, "Username is missing")
-    }
+    const { id } = req.params;
 
     const channel = await User.aggregate([
         {
             $match: {
-                username: username?.toLowerCase()
+                _id: new mongoose.Types.ObjectId(id)
             }
         },
         {
@@ -371,14 +367,14 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         }
     ])
 
-    if (!channel?.length) {
+    if (!channel) {
         throw new ApiError(404, "channel does not exists")
     }
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, channel[0], "User channel fetched successfully.")
+            new ApiResponse(200, channel, "User channel fetched successfully.")
         )
 
 })

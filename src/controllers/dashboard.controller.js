@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import { Video } from "../models/video.model.js"
 import { Subscription } from "../models/subscription.model.js"
 import { Like } from "../models/like.model.js"
+import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
@@ -51,20 +52,20 @@ const getChannelStats = asyncHandler(async (req, res) => {
                         $size: "$subscribers"
                     }
                 }
-            }, 
+            },
             {
                 $project: {
                     _id: 0,
                     likes: 0,
                     subscribers: 0,
                 }
-            }
+            },
         ])
-    
+
         if (!channelStats) {
             throw new ApiError(500, "Failed to get channel stats")
         }
-    
+
         return res
             .status(200)
             .json(
@@ -96,7 +97,60 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     }
 })
 
+// get all the user info, videos, playlist, tweets uploaded by the channel
+const getChannelsAllContent = asyncHandler(async (req, res) => {
+    const { id } = req.params; // channel id
+    const channelAllContent = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "_id",
+                foreignField: "owner",
+                as: "videos"
+            }
+        },
+        {
+            $lookup: {
+                from: "playlists",
+                localField: "_id",
+                foreignField: "owner",
+                as: "playlists"
+            }
+        },
+        {
+            $lookup: {
+                from: "tweets",
+                localField: "_id",
+                foreignField: "owner",
+                as: "tweets"
+            }
+        },
+        {
+            $project: {
+                password: 0,
+                refreshToken: 0,
+            }
+        }
+    ])
+
+    if (!channelAllContent) {
+        throw new ApiError(404, "No channel found")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, channelAllContent, "Full channel content retrieved successfully")
+        )
+})
+
 export {
     getChannelStats,
-    getChannelVideos
+    getChannelVideos,
+    getChannelsAllContent
 }

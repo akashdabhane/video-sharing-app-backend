@@ -20,13 +20,13 @@ const userSchema = new mongoose.Schema({
     },
     fullName: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         index: true
     },
     avatar: {
         type: String,   // cloudinary url
-        required: true,
+        // required: true,
     },
     coverImage: {
         type: String, // cloudinary url

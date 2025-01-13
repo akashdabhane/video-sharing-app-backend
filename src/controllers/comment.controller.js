@@ -16,21 +16,21 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     try {
         const allComment = await Comment.find({ video: videoId })
+        .skip((page - 1) * limit)
+        .limit(page * limit)
+        .populate({
+            path: "owner",
+            select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
+        })
 
         if (!allComment) {
             throw new ApiError(404, "No comments found for this video");
         }
 
-        const comments = allComment.slice((page - 1) * limit, page * limit);
-
-        if (!comments) {
-            throw new ApiError(404, "No comments found for this page");
-        }
-
         return res
             .status(200)
             .json(
-                new ApiResponse(200, comments, "Comments retrieved successfully")
+                new ApiResponse(200, allComment, "Comments retrieved successfully")
             );
 
     } catch (error) {

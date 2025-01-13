@@ -9,7 +9,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
     //TODO: get all videos based on query, sort, pagination
 
     // assuming sortBy = 'createdAt', sortType = 'desc' types of values
@@ -33,7 +33,11 @@ const getAllVideos = asyncHandler(async (req, res) => {
         const videos = await Video.find(filter)
             .sort(sort)
             .skip(skip)
-            .limit(parseInt(limit, 10)); // Ensure limit is an integer
+            .limit(parseInt(limit, 10))  // Ensure limit is an integer
+            .populate({
+                path: "owner",
+                select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
+            });
 
         res
             .status(200)
@@ -89,7 +93,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
         if (isPublished === false) {
             newVideoObj.isPublished = false
-        } 
+        }
 
         const newVideo = await Video.create(newVideoObj)
 
@@ -113,7 +117,10 @@ const getVideoById = asyncHandler(async (req, res) => {
     //TODO: get video by id
 
     try {
-        const video = await Video.findById(videoId)
+        const video = await Video.findById(videoId).populate({
+            path: "owner",
+            select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
+        })
 
         if (!video) {
             throw new ApiError(404, "Video not found");
@@ -213,7 +220,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     try {
         const video = await Video.findById(videoId);
 
-        if(!video) {
+        if (!video) {
             throw new ApiError(404, "Video not found");
         }
 
@@ -234,11 +241,28 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     }
 })
 
+const getAllChannelVideos = asyncHandler(async (req, res) => {
+    const { channelId } = req.params;
+
+    const allVideoOfChannel = await Video.find({ owner: channelId });
+
+    if (!allVideoOfChannel) {
+        throw new ApiError(404, "No videos found for this channel");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, allVideoOfChannel, "All videos for this channel fetched successfully")
+        )
+})
+
 export {
     getAllVideos,
     publishAVideo,
     getVideoById,
     updateVideo,
     deleteVideo,
-    togglePublishStatus
+    togglePublishStatus,
+    getAllChannelVideos
 }
