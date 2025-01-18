@@ -6,7 +6,8 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
-
+import formatVideoDuration from "../utils/formatVideoDuration.js"
+import mongoose from "mongoose"
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -86,9 +87,9 @@ const publishAVideo = asyncHandler(async (req, res) => {
             title,
             description,
             owner: userId,
-            duration: Math.round(video.duration),
-            videoFile: video.url,
-            thumbnail: thumbnail.url
+            duration: formatVideoDuration(video.duration),
+            videoFile: video.secure_url,
+            thumbnail: thumbnail.secure_url
         }
 
         if (isPublished === false) {
@@ -117,14 +118,89 @@ const getVideoById = asyncHandler(async (req, res) => {
     //TODO: get video by id
 
     try {
-        const video = await Video.findById(videoId).populate({
-            path: "owner",
-            select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
-        })
+        const video = await Video.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(videoId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "owner"
+                }
+            },
+            {
+                $lookup: {
+                    from: "likes",
+                    localField: "_id",
+                    foreignField: "video",
+                    as: "likes"
+                }
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "owner",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+            },
+            {
+                $addFields: {
+                    totalLikes: {
+                        $size: "$likes"
+                    },
+                    totalSubscribers: {
+                        $size: "$subscribers"
+                    },
+                    isLiked: {
+                        $in: [req.user._id, { $map: { input: "$likes", as: "like", in: "$$like.likedBy" } }]
+                    },
+                    isSubscribed: {
+                        $in: [req.user._id, { $map: { input: "$subscribers", as: "subscriber", in: "$$subscriber.user" } }]
+                    }
+                }
+            },
+            {
+                $project: {
+                    likes: 0,
+                    subscribers: 0,
+                    owner: {
+                        username: 0,
+                        email: 0,
+                        coverImage: 0,
+                        watchHistory: 0,
+                        password: 0,
+                        createdAt: 0,
+                        updatedAt: 0,
+                        refreshToken: 0,
+                    }
+                }
+            }
+        ])
+
 
         if (!video) {
             throw new ApiError(404, "Video not found");
         }
+
+        await User.findByIdAndUpdate(req.user._id,
+            {
+                $push: { watchHistory: videoId }
+            },
+            { new: true }
+        ).select('-password -refreshToken');
+
+        await Video.findByIdAndUpdate(videoId, 
+            {
+                $inc: {
+                    views: 1
+                }
+            }
+        );
 
         return res
             .status(200)

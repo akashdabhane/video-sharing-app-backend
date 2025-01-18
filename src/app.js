@@ -1,13 +1,17 @@
 import express from "express"
 import cors from 'cors'
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
 
 const app = express();
+
+// log requests
+app.use(morgan('tiny'));
 
 app.use(cors({
     origin: ['http://localhost:3000', 'https://videoexchange.vercel.app'],
     credentials: true,
-    methods: ['GET', 'POST', 'UPDATE', 'DELETE', 'HEAD', 'OPTIONS']
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']
 }))
 
 app.use(express.json({limit: '16kb'}))

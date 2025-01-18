@@ -15,13 +15,60 @@ const getVideoComments = asyncHandler(async (req, res) => {
     }
 
     try {
-        const allComment = await Comment.find({ video: videoId })
-        .skip((page - 1) * limit)
-        .limit(page * limit)
-        .populate({
-            path: "owner",
-            select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
-        })
+        // const allComment = await Comment.find({ video: videoId })
+        // .skip((page - 1) * limit)
+        // .limit(page * limit)
+        // .populate({
+        //     path: "owner",
+        //     select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Exclude 'password' and 'email' fields
+        // })
+        const allComment = await Comment.aggregate([
+            {
+                $match: {
+                    video: new mongoose.Types.ObjectId(videoId)
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "owner",
+                },
+            },
+            {
+                $lookup: {
+                    from: "likes",
+                    localField: "_id",
+                    foreignField: "comment",
+                    as: "likes",
+                }
+            },
+            {
+                $addFields: {
+                    totalLikes: {
+                        $size: "$likes"
+                    },
+                    isLiked: {
+                        $in: [req.user._id, { $map: { input: "$likes", as: "like", in: "$$like.likedBy" } }]
+                    },
+                }
+            },
+            {
+                $project: {
+                    likes: 0,
+                    owner: {
+                        email: 0,
+                        coverImage: 0,
+                        watchHistory: 0,
+                        password: 0,
+                        createdAt: 0,
+                        updatedAt: 0,
+                        refreshToken: 0,
+                    }
+                }
+            }
+        ])
 
         if (!allComment) {
             throw new ApiError(404, "No comments found for this video");

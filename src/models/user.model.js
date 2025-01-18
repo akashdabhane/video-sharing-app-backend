@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema({
     },
     coverImage: {
         type: String, // cloudinary url
+        default: "https://res.cloudinary.com/domlldpib/image/upload/v1737022850/videotube/yke8udguzvsz2gct3k8w.jpg"
     },
     watchHistory: [
         {

@@ -76,7 +76,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
                 throw new ApiError(400, "You can't unlike this comment")
             }
 
-            await Comment.findOneAndDelete({ video: commentId, likedBy: userId })
+            await Like.findOneAndDelete({ comment: commentId, likedBy: userId })
 
             return res
                 .status(200)
@@ -109,13 +109,13 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     //TODO: toggle like on tweet
 
     if (!tweetId) {
-        throw new ApiError(400, "Video ID is required");
+        throw new ApiError(400, "Tweet id is required");
     }
 
     try {
         const tweet = await Tweet.findById(tweetId);
 
-        if (!tweet) throw new ApiError(404, "Video not found")
+        if (!tweet) throw new ApiError(404, "Tweet not found")
 
         const userLike = await Like.findOne({ tweet: tweetId, likedBy: userId })
 
@@ -124,12 +124,12 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
                 throw new ApiError(400, "You can't unlike this tweet")
             }
 
-            await Tweet.findOneAndDelete({ video: tweetId, likedBy: userId })
+            await Like.findOneAndDelete({ tweet: tweetId, likedBy: userId })
 
             return res
                 .status(200)
                 .json(
-                    new ApiResponse(200, {}, "toggled like to video")
+                    new ApiResponse(200, {}, "toggled like to tweet")
                 )
         }
 
@@ -157,13 +157,23 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     // need to implement aggregation pipeline
 
     try {
-        const allLikedVideos = await Like.find({ likedBy: userId })
+        const allLikedVideos = await Like.find({
+            likedBy: userId,
+            video: { $exists: true }
+        })
+        .populate({
+            path: "video",
+            select: "-videoFile",
+            populate: {
+                path: "owner", // Populate the owner field within the video
+                select: "-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt" // Specify the fields to include from the owner
+            }
+        })
 
-        const a = allLikedVideos.filter((doc) => { doc.video !== "" })
         return res.
             status(200)
             .json(
-                new ApiResponse(200, a, "all liked videos fetched successfully")
+                new ApiResponse(200, allLikedVideos, "all liked videos fetched successfully")
             )
     } catch (error) {
         throw new ApiError(500, error?.message || "Server error")

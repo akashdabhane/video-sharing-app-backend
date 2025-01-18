@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
+import { Video } from "../models/video.model.js"
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -232,18 +233,18 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 })
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-    const { fullName, email } = req.body;
+    const { name, email } = req.body;
 
-    if (!fullName || !email) {
-        throw new ApiError(400, "all fields are required")
+    if (!name && !email) {
+        throw new ApiError(400, "Atleast one fields is required")
     }
 
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
-            $set: { fullName, email }
+            $set: { fullName: name, email }
         },
         { new: true }
-    ).select("-password")
+    ).select("-password -refreshToken")
 
     return res
         .status(200)
@@ -391,14 +392,14 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                 from: "videos",
                 localField: "watchHistory",
                 foreignField: "_id",
-                as: "watchHistory", 
+                as: "watchHistory",
                 pipeline: [
                     {
                         $lookup: {
                             from: "users",
-                            localField: "owner", 
+                            localField: "owner",
                             foreignField: "_id",
-                            as: "owner", 
+                            as: "owner",
                             pipeline: [
                                 {
                                     $project: {
@@ -409,7 +410,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                                 }
                             ]
                         }
-                    }, 
+                    },
                     {
                         $addFields: {
                             owner: {
@@ -423,13 +424,28 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     ])
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, user[0].watchHistory, "Watch history fetched")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, user[0].watchHistory, "Watch history fetched")
+        )
 })
 
+const removeVideofromWatchHistory = asyncHandler(async (req, res) => {
+    const videoId = req.params.id;  // id of the video
 
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            $pull: { watchHistory: videoId }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Video removed from watch history successfully")
+        )
+})
 
 export {
     registerUser,
@@ -442,5 +458,6 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    removeVideofromWatchHistory
 }
