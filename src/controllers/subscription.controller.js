@@ -29,7 +29,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
             return res
                 .status(200)
                 .json(
-                    new ApiResponse(200, toggleSubscription, "Subscription status toggled")
+                    new ApiResponse(201, toggleSubscription, "Subscription status toggled")
                 )
         }
 
@@ -57,7 +57,10 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
         if (!channel) throw new ApiError(404, "Channel not found");
 
-        const allSubscribers = await Subscription.find({ channel: channelId })
+        const allSubscribers = await Subscription.find({ channel: channelId }).populate({
+            path: 'subscriber',
+            select: '-password -email -refreshToken -coverImage -watchHistory -createdAt -updatedAt'
+        })
 
         return res
             .status(200)
